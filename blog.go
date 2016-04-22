@@ -27,6 +27,8 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/justinas/alice"
 	"github.com/justinas/nosurf"
+
+	"gopkg.in/pg.v4"
 )
 
 var funcs = template.FuncMap{
@@ -134,8 +136,29 @@ func layoutData(w http.ResponseWriter, r *http.Request) authboss.HTMLData {
 	}
 }
 
+type Digit struct {
+	Position int64
+	Digit    int64
+}
+
 func index(w http.ResponseWriter, r *http.Request) {
 	data := layoutData(w, r)
+
+	db := pg.Connect(&pg.Options{
+		User:     "vagrant",
+		Password: "vagrant",
+		Database: "vagrant",
+	})
+
+	var digits []Digit
+
+	err := db.Model(&digits).Select()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(digits)
+
 	mustRender(w, r, "index", data)
 }
 
