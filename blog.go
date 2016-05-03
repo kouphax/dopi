@@ -39,8 +39,13 @@ var funcs = template.FuncMap{
 }
 
 var (
+	db = pg.Connect(&pg.Options{
+		User:     "vagrant",
+		Password: "vagrant",
+		Database: "vagrant",
+	})
 	ab        = authboss.New()
-	database  = NewMemStorer()
+	database  = NewPostgresStorer(db)
 	templates = tpl.Must(tpl.Load("views", "views/partials", "layout.html.tpl", funcs))
 	schemaDec = schema.NewDecoder()
 )
@@ -78,8 +83,7 @@ func setupAuthboss() {
 		authboss.Rules{
 			FieldName:       "password",
 			Required:        true,
-			MinLength:       4,
-			MaxLength:       8,
+			MinLength:       8,
 			AllowWhitespace: false,
 		},
 	}
@@ -143,22 +147,6 @@ type Digit struct {
 
 func index(w http.ResponseWriter, r *http.Request) {
 	data := layoutData(w, r)
-
-	db := pg.Connect(&pg.Options{
-		User:     "vagrant",
-		Password: "vagrant",
-		Database: "vagrant",
-	})
-
-	var digits []Digit
-
-	err := db.Model(&digits).Select()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(digits)
-
 	mustRender(w, r, "index", data)
 }
 

@@ -1,13 +1,13 @@
 CREATE TABLE users(
-    id                  SERIAL PRIMARY KEY,
-    name                TEXT UNIQUE,
-    email               TEXT UNIQUE,
-    password            TEXT,
-    confirmToken        TEXT,
-    confirmed           BOOLEAN,
-    attemptNumber       INT,
-    attemptTime         TIMESTAMP,
-    locked              TIMESTAMP,
-    recoverToken        TEXT,
-    recoverTokenExpiry  TIMESTAMP
+    id                    SERIAL PRIMARY KEY,
+    name                  TEXT UNIQUE,
+    email                 TEXT UNIQUE,
+    password              TEXT,
+    confirm_token         TEXT,
+    confirmed             BOOLEAN,
+    attempt_number        INT,
+    attempt_time          TIMESTAMP,
+    locked                TIMESTAMP,
+    recover_token         TEXT,
+    recover_token_expiry  TIMESTAMP
 )

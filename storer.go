@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/authboss.v0"
+	"gopkg.in/pg.v4"
 )
-
-var nextUserID int
 
 type User struct {
 	ID   int
@@ -34,103 +32,97 @@ type User struct {
 	// Remember is in another table
 }
 
-type MemStorer struct {
-	Users  map[string]User
-	Tokens map[string][]string
+type Token struct {
+	Key   string
+	Token string
 }
 
-func NewMemStorer() *MemStorer {
-	return &MemStorer{
-		Users: map[string]User{
-			"zeratul@heroes.com": User{
-				ID:        1,
-				Name:      "Zeratul",
-				Password:  "$2a$10$XtW/BrS5HeYIuOCXYe8DFuInetDMdaarMUJEOg/VA/JAIDgw3l4aG", // pass = 1234
-				Email:     "zeratul@heroes.com",
-				Confirmed: true,
-			},
-		},
-		Tokens: make(map[string][]string),
+type PostgresStorer struct {
+	db *pg.DB
+}
+
+func NewPostgresStorer(db *pg.DB) *PostgresStorer {
+	return &PostgresStorer{
+		db: db,
 	}
 }
 
-func (s MemStorer) Create(key string, attr authboss.Attributes) error {
+func (s PostgresStorer) Create(key string, attr authboss.Attributes) error {
 	var user User
 	if err := attr.Bind(&user, true); err != nil {
 		return err
 	}
 
-	user.ID = nextUserID
-	nextUserID++
+	err := s.db.Create(&user)
 
-	s.Users[key] = user
-	fmt.Println("Create")
-	spew.Dump(s.Users)
-	return nil
+	spew.Dump(user)
+	return err
 }
 
-func (s MemStorer) Put(key string, attr authboss.Attributes) error {
-	return s.Create(key, attr)
+func (s PostgresStorer) Put(key string, attr authboss.Attributes) error {
+	var user User
+	if err := attr.Bind(&user, true); err != nil {
+		return err
+	}
+
+	// TODO - need to derive the primary key
+
+	return s.db.Update(&user)
 }
 
-func (s MemStorer) Get(key string) (result interface{}, err error) {
-	user, ok := s.Users[key]
-	if !ok {
+func (s PostgresStorer) Get(key string) (result interface{}, err error) {
+	var user User
+	err = s.db.Model(&user).Where("email = ?", key).First()
+	if err != nil {
 		return nil, authboss.ErrUserNotFound
 	}
 
 	return &user, nil
 }
 
-func (s MemStorer) AddToken(key, token string) error {
-	s.Tokens[key] = append(s.Tokens[key], token)
-	fmt.Println("AddToken")
-	spew.Dump(s.Tokens)
-	return nil
+func (s PostgresStorer) AddToken(key, token string) error {
+	return s.db.Create(&Token{
+		Key:   key,
+		Token: token,
+	})
 }
 
-func (s MemStorer) DelTokens(key string) error {
-	delete(s.Tokens, key)
-	fmt.Println("DelTokens")
-	spew.Dump(s.Tokens)
-	return nil
+func (s PostgresStorer) DelTokens(key string) error {
+	var token Token
+	_, err := s.db.Model(&token).Where("key = ?", key).Delete()
+	return err
 }
 
-func (s MemStorer) UseToken(givenKey, token string) error {
-	toks, ok := s.Tokens[givenKey]
-	if !ok {
+func (s PostgresStorer) UseToken(givenKey, token string) error {
+	var t Token
+	result, err := s.db.Model(&t).Where("key = ?", givenKey).Where("token = ?", token).Delete()
+	if err != nil {
+		return err
+	}
+
+	if result.Affected() == 0 {
 		return authboss.ErrTokenNotFound
 	}
 
-	for i, tok := range toks {
-		if tok == token {
-			toks[i], toks[len(toks)-1] = toks[len(toks)-1], toks[i]
-			s.Tokens[givenKey] = toks[:len(toks)-1]
-			return nil
-		}
-	}
-
-	return authboss.ErrTokenNotFound
+	return nil
 }
 
-func (s MemStorer) ConfirmUser(tok string) (result interface{}, err error) {
-	fmt.Println("==============", tok)
-
-	for _, u := range s.Users {
-		if u.ConfirmToken == tok {
-			return &u, nil
-		}
+func (s PostgresStorer) ConfirmUser(tok string) (result interface{}, err error) {
+	var user User
+	err = s.db.Model(&user).Where("confirmToken = ?", tok).First()
+	if err != nil {
+		return nil, authboss.ErrUserNotFound
 	}
 
-	return nil, authboss.ErrUserNotFound
+	return user, nil
 }
 
-func (s MemStorer) RecoverUser(rec string) (result interface{}, err error) {
-	for _, u := range s.Users {
-		if u.RecoverToken == rec {
-			return &u, nil
-		}
+func (s PostgresStorer) RecoverUser(rec string) (result interface{}, err error) {
+	var user User
+	err = s.db.Model(&user).Where("recoverToken = ?", rec).First()
+	if err != nil {
+		return nil, authboss.ErrUserNotFound
 	}
 
-	return nil, authboss.ErrUserNotFound
+	return user, nil
 }

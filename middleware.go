@@ -54,10 +54,10 @@ func logger(h http.Handler) http.Handler {
 			}
 			fmt.Println()
 		}
-		fmt.Print("Database: ")
-		for _, u := range database.Users {
-			fmt.Printf("%#v\n", u)
-		}
+		//fmt.Print("Database: ")
+		//for _, u := range database.Users {
+		//	fmt.Printf("%#v\n", u)
+		//}
 		h.ServeHTTP(w, r)
 	})
 }

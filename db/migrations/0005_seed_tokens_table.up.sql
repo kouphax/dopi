@@ -1,4 +1,4 @@
 CREATE TABLE tokens(
-	key TEXT PRIMARY KEY,
+	key   TEXT,
 	token TEXT
 )
