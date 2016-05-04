@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -39,41 +38,30 @@ var funcs = template.FuncMap{
 }
 
 var (
-	db = pg.Connect(&pg.Options{
-		User:     "vagrant",
-		Password: "vagrant",
-		Database: "vagrant",
-	})
 	ab        = authboss.New()
-	database  = NewPostgresStorer(db)
-	templates = tpl.Must(tpl.Load("views", "views/partials", "layout.html.tpl", funcs))
+	templates = tpl.Must(tpl.Load("views/app", "views/partials", "layout.html.tpl", funcs))
 	schemaDec = schema.NewDecoder()
 )
 
-func setupAuthboss() {
+func configureAuthBoss(db *pg.DB, config *Config) {
+	database := NewPostgresStorer(db)
 	ab.Storer = database
 	ab.MountPath = "/auth"
-	ab.ViewsPath = "ab_views"
-	ab.RootURL = `http://localhost:3000`
-
+	ab.ViewsPath = "./views/auth"
+	ab.RootURL = config.Web.Root
 	ab.LayoutDataMaker = layoutData
-
-	b, err := ioutil.ReadFile(filepath.Join("views", "layout.html.tpl"))
+	b, err := ioutil.ReadFile(filepath.Join("views/app", "layout.html.tpl"))
 	if err != nil {
 		panic(err)
 	}
 	ab.Layout = template.Must(template.New("layout").Funcs(funcs).Parse(string(b)))
-
 	ab.XSRFName = "csrf_token"
 	ab.XSRFMaker = func(_ http.ResponseWriter, r *http.Request) string {
 		return nosurf.Token(r)
 	}
-
 	ab.CookieStoreMaker = NewCookieStorer
 	ab.SessionStoreMaker = NewSessionStorer
-
-	ab.Mailer = authboss.LogMailer(os.Stdout)
-
+	ab.Mailer = authboss.SMTPMailer(config.Mailer.Server, nil)
 	ab.Policies = []authboss.Validator{
 		authboss.Rules{
 			FieldName:       "email",
@@ -87,25 +75,37 @@ func setupAuthboss() {
 			AllowWhitespace: false,
 		},
 	}
-
 	if err := ab.Init(); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func main() {
-	cookieStoreKey, _ := base64.StdEncoding.DecodeString(`NpEPi8pEjKVjLGJ6kYCS+VTCzi6BUuDzU0wrwXyf5uDPArtlofn2AG6aTMiPmN3C909rsEWMNqJqhIVPGP3Exg==`)
-	sessionStoreKey, _ := base64.StdEncoding.DecodeString(`AbfYwmmt8UCwUuhd9qvfNA9UCuN1cVcKJN1ofbiky6xCyyBj20whe40rJa3Su0WOWLWcPpO1taqJdsEI/65+JA==`)
+
+	// wire stuff up
+	config, err := LoadConfig("./conf/application.yml")
+	if err != nil {
+		panic(err)
+	}
+
+	db := pg.Connect(&pg.Options{
+		User:     config.Database.User,
+		Password: config.Database.Password,
+		Database: config.Database.Database,
+	})
+
+	cookieStoreKey := []byte(config.Crypto.Application)
+	sessionStoreKey := []byte(config.Crypto.Session)
 	cookieStore = securecookie.New(cookieStoreKey, nil)
 	sessionStore = sessions.NewCookieStore(sessionStoreKey)
 
-	setupAuthboss()
+	configureAuthBoss(db, config)
 
 	schemaDec.IgnoreUnknownKeys(true)
-	mux := mux.NewRouter()
 
+	mux := mux.NewRouter()
 	mux.PathPrefix("/auth").Handler(ab.NewRouter())
-	mux.Handle("/secure", authProtect(secureArea)).Methods("GET")
+	mux.Handle("/secure", protect(secureArea)).Methods("GET")
 	mux.HandleFunc("/", index).Methods("GET")
 
 	mux.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

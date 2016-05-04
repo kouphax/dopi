@@ -1,0 +1,14 @@
+database:
+  user: vagrant
+  password: vagrant
+  database: vagrant
+
+mailer:
+  server: '127.0.0.1:1025'
+
+crypto:
+  application: 'Eh6|?J3^n;_FB~vWqy9{M|&V_vkMI_L.+JP.3[X(g8MQm2:EDac|H<h]4^g02n0'
+  session: 'KJRM]QzS11YTW@arTo6-~wkK9g)f#75?)Ww\[FJDwrQ*P^2/2tKtGE$b=d?Jv=n'
+
+web:
+  root: 'http://localhost:3000'

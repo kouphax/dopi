@@ -12,7 +12,7 @@ type authProtector struct {
 	f http.HandlerFunc
 }
 
-func authProtect(f http.HandlerFunc) authProtector {
+func protect(f http.HandlerFunc) authProtector {
 	return authProtector{f}
 }
 

@@ -3,33 +3,22 @@ package main
 import (
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/authboss.v0"
 	"gopkg.in/pg.v4"
 )
 
 type User struct {
-	ID   int
-	Name string
-
-	// Auth
-	Email    string
-	Password string
-
-	// Confirm
-	ConfirmToken string
-	Confirmed    bool
-
-	// Lock
-	AttemptNumber int64
-	AttemptTime   time.Time
-	Locked        time.Time
-
-	// Recover
+	ID                 int
+	Name               string
+	Email              string
+	Password           string
+	ConfirmToken       string
+	Confirmed          bool
+	AttemptNumber      int64
+	AttemptTime        time.Time
+	Locked             time.Time
 	RecoverToken       string
 	RecoverTokenExpiry time.Time
-
-	// Remember is in another table
 }
 
 type Token struct {
@@ -53,10 +42,7 @@ func (s PostgresStorer) Create(key string, attr authboss.Attributes) error {
 		return err
 	}
 
-	err := s.db.Create(&user)
-
-	spew.Dump(user)
-	return err
+	return s.db.Create(&user)
 }
 
 func (s PostgresStorer) Put(key string, attr authboss.Attributes) error {
@@ -65,8 +51,13 @@ func (s PostgresStorer) Put(key string, attr authboss.Attributes) error {
 		return err
 	}
 
-	// TODO - need to derive the primary key
+	var id int
+	err := s.db.Model(&User{}).Column("id").Where("email = ?", key).Select(&id)
+	if err != nil {
+		return authboss.ErrUserNotFound
+	}
 
+	user.ID = id
 	return s.db.Update(&user)
 }
 
@@ -109,20 +100,20 @@ func (s PostgresStorer) UseToken(givenKey, token string) error {
 
 func (s PostgresStorer) ConfirmUser(tok string) (result interface{}, err error) {
 	var user User
-	err = s.db.Model(&user).Where("confirmToken = ?", tok).First()
+	err = s.db.Model(&user).Where("confirm_token = ?", tok).First()
 	if err != nil {
 		return nil, authboss.ErrUserNotFound
 	}
 
-	return user, nil
+	return &user, nil
 }
 
 func (s PostgresStorer) RecoverUser(rec string) (result interface{}, err error) {
 	var user User
-	err = s.db.Model(&user).Where("recoverToken = ?", rec).First()
+	err = s.db.Model(&user).Where("recover_token = ?", rec).First()
 	if err != nil {
 		return nil, authboss.ErrUserNotFound
 	}
 
-	return user, nil
+	return &user, nil
 }

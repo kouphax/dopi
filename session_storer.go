@@ -8,7 +8,7 @@ import (
 	"gopkg.in/authboss.v0"
 )
 
-const sessionCookieName = "ab_blog"
+const sessionCookieName = "dopi"
 
 var sessionStore *sessions.CookieStore
 
