@@ -1,30 +1,9 @@
 package main
 
 import (
-	"time"
-
 	"gopkg.in/authboss.v0"
 	"gopkg.in/pg.v4"
 )
-
-type User struct {
-	ID                 int
-	Name               string
-	Email              string
-	Password           string
-	ConfirmToken       string
-	Confirmed          bool
-	AttemptNumber      int64
-	AttemptTime        time.Time
-	Locked             time.Time
-	RecoverToken       string
-	RecoverTokenExpiry time.Time
-}
-
-type Token struct {
-	Key   string
-	Token string
-}
 
 type PostgresStorer struct {
 	db *pg.DB

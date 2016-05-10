@@ -19,7 +19,9 @@ type Config struct {
 		Session     string
 	}
 	Web struct {
-		Root string
+		Root       string
+		CookieName string `yaml:"cookie_name"`
+		XsrfToken  string `yaml:"xsrf_token"`
 	}
 }
 

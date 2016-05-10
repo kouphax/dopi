@@ -55,10 +55,11 @@ func configureAuthBoss(db *pg.DB, config *Config) {
 		panic(err)
 	}
 	ab.Layout = template.Must(template.New("layout").Funcs(funcs).Parse(string(b)))
-	ab.XSRFName = "csrf_token"
+	ab.XSRFName = config.Web.XsrfToken
 	ab.XSRFMaker = func(_ http.ResponseWriter, r *http.Request) string {
 		return nosurf.Token(r)
 	}
+
 	ab.CookieStoreMaker = NewCookieStorer
 	ab.SessionStoreMaker = NewSessionStorer
 	ab.Mailer = authboss.SMTPMailer(config.Mailer.Server, nil)
@@ -133,24 +134,25 @@ func layoutData(w http.ResponseWriter, r *http.Request) authboss.HTMLData {
 
 	return authboss.HTMLData{
 		"loggedin":               userInter != nil,
-		"username":               "",
 		authboss.FlashSuccessKey: ab.FlashSuccess(w, r),
 		authboss.FlashErrorKey:   ab.FlashError(w, r),
 		"current_user_name":      currentUserName,
+		"current_user":           userInter,
 	}
-}
-
-type Digit struct {
-	Position int64
-	Digit    int64
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
 	data := layoutData(w, r)
+	fmt.Println(data["loggedin"].(bool))
 	mustRender(w, r, "index", data)
 }
 
 func secureArea(w http.ResponseWriter, r *http.Request) {
+	data := layoutData(w, r)
+	mustRender(w, r, "secure", data)
+}
+
+func home(w http.ResponseWriter, r *http.Request) {
 	data := layoutData(w, r)
 	mustRender(w, r, "secure", data)
 }

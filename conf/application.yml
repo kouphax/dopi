@@ -12,3 +12,5 @@ crypto:
 
 web:
   root: 'http://localhost:3000'
+  cookie_name: dopi
+  xsrf_token: csrf_token
